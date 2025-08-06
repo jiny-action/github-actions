@@ -1,0 +1,123 @@
+# 간단한 워크플로우 만들기
+# 1. 깃헙 레포 생성 자동화
+# 2. 키워드 기반 이슈 알림 자동화
+
+# 1. 깃험 레포 생성 자동화
+# 깃헙 관리자
+# 깃헙 레포 생성에 대한 요청을 처리
+
+# 깃헙 레포 생성 시, 1가지 규칙
+# 정해진 prefix를 사용한 레포지토리 이름
+
+# ex) prefix: service
+# - repo name: service-github-actions
+
+# 생성 여부에 대한 결과를 슬랙으로 보낼 것
+
+
+# 워크플로우 구성
+# 1. 정해진 prefix를 사용한 레포지토리 이름
+# 2. 슬랙 알림 전송(성공, 실패)
+# - 레포지토리 이름을 어떻게 정할 지
+# - 어떤 prefix를 사용할 지
+# - input값을 전달하면 됨 > github event: workflow dispatch
+# - inputs값 기반의 레포 생성 > 성공, 실패 여부에 따라 슬랙으로 알림 전송 
+
+# job 구성
+# 1. jobs(job 2개 사용)
+# - 첫 번째 job: create-repo
+# - 두 번째 job: slack
+
+# 2. steps(단일 job) - 선택
+# - 첫 번째 step: create-repo
+# - 두 번째 step: slack
+
+# 단일 잡 구성 step 1
+# create-repo
+# - inputs값 기반의 레포 생성
+# - gh cli 사용
+
+# gh란?
+# - github cli
+# - 터미널에서, github 기능을 커맨드로 제어 가능
+# -- 레포지토리, 이슈, 풀리퀘스트, 깃헙액션 등 관리
+# - 깃헙 러너에서 기본적으로 사용 가능
+
+# 단일 잡 구성 step 2
+
+# slack(액션 사용)
+# - 레포 생성에 성공일 때 문제 없음
+# - 레포 생성에 실패하면?
+# -- if: always() 사용
+
+# 정리
+# - create-repo > 인풋 값 받아서 gh cli로 레포 생성
+# - slack > if:always()
+
+
+# Personal access tokens 생성과정
+# 1. 우측 상단 프로필 클릭 > settings 클릭
+# 2. 사이드 메뉴에 Developer settings 클릭
+# 3. Personal access tokens 클릭
+# 4. Tokens (classic) 클릭
+# 5. 화면 우측에 Generate new token 클릭
+# 6. Generate new token (classic) 클릭
+# 7. 값 입력 및 선택(스코프 전체 선택)
+# 8. 발급된 토큰 복사(화면 닫기 후에는 다시 볼 수 없음)
+
+# Personal access tokens을 repo secret으로 저장
+# 1. repo의 settings 클릭
+# 2. Secrets and variables 클릭
+# 3. Actions 클릭
+# 4. New repository secret 클릭
+# 5. Name: PERSONAL_ACCESS_TOKEN(자유), Value: Personal access tokens 값 입력
+
+
+# slack webhook URL 생성과정 > 슬랙으로 메시지 발송
+# 1. slack 계정 생성 및 로그인 
+# 2. https://api.slack.com/messaging/webhooks에 접속하여 로그인
+# 3. 우측 상단에 Your Apps 클릭
+# 4. Create your first App 클릭
+# 5. 모달창에서 From scratch 클릭 > App Name 입력 + workspace 선택 => Create App 클릭
+# 6. Incoming Webhooks 클릭 > 활성화
+# 7. 1) slack 에 github action 이 보내는 알림 받는 채널 생성
+#    2) slack 사이트 - Add New Webhook to Workspace 클릭 > 생성한 채널 선택 => 허용
+# 샘플 명령어로 테스트 진행
+
+
+# slack webhook URL을 repo secret으로 저장
+# 1. repo의 settings 클릭
+# 2. Secrets and variables 클릭
+# 3. Actions 클릭
+# 4. New repository secret 클릭
+# 5. Name: SLACK_WEBHOOK_URL(자유), Value: webhook url 값 입력
+
+name: create-repo
+on:
+  workflow-dispatch:
+    inputs:
+      prefix:
+        description: 'set repo prefix'
+        required: true
+        default: 'service'
+        type: choice
+        options:
+        - example
+        - service
+      name:
+        description: 'set repo name'
+        required: true
+        default: 'github-actions'
+        type: string
+
+jobs:
+  create-repo-automation:
+    runs-on: ubuntu-latest
+    steps:
+    - name: gh auth login
+      run: |
+        echo ${{ secrets.PERSONAL_ACCESS_TOKEN }} | gh auth login --with-token
+    - name: create-repo
+      run: |
+        gh repo create jiny-action/${{ inputs.prefix }}-${{ inputs.name }} --public --add-readme
+
