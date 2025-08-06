@@ -90,7 +90,7 @@
 # 2. Secrets and variables 클릭
 # 3. Actions 클릭
 # 4. New repository secret 클릭
-# 5. Name: SLACK_WEBHOOK_URL(자유), Value: webhook url 값 입력
+# 5. Name: SLACK_WEBHOOK_URL(자유), Value: webhook url 값 입력 
 
 name: create-repo
 on:
