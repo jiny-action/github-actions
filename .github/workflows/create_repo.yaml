@@ -121,6 +121,8 @@ jobs:
       run: |
         echo ${{ secrets.PERSONAL_ACCESS_TOKEN }} | gh auth login --with-token
     - name: create-repo
+      # 성공여부에 대한 내용을 전달하기위해 id 추가
+      id: create-repo
       run: |
         gh repo create jiny-action/${{ inputs.prefix }}-${{ inputs.name }} --public --add-readme
     - name: slack
@@ -143,9 +145,9 @@ jobs:
               }
             ]
           }
-        env:
-          SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
-          SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+      env:
+        SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
+        SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
 
 
 
