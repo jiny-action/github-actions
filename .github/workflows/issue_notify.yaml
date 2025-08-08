@@ -1,0 +1,113 @@
+# 키워드 기반 이슈 알림 자동화
+# - 이슈들의 중요도에 따라 슬랙으로 팀원에게 알리는 일 담당
+# - 수동으로 이슈를 각 채널에 공유
+
+# 이슈 생성 시, 이슈 이름에 대한 규칙
+# - 'critical' 키워드가 있다면 슬랙의 critical-issue 채널로 공유
+# - 'normal' 키워드가 있다면 슬랙의 normal-issue 채널로 공유
+
+# 워크플로우 구성
+# 1. 이슈가 생성될 때 실행
+# - issue event
+# - types: [opened]
+
+# 2. 특정 키워드가 포함되면 슬랙으로 공유
+# 2-1. jobs(단일 job)
+# - 첫 번째 step: if critical
+# -- 슬랙의 critical-issue 채널로 공유
+# - 두 번째 step: if normal
+# -- 슬랙의 normal-issue 채널로 공유
+# => 문제점
+#  - 키워드 추가될 시 if condition을 사용해서 스텝을 계속 추가해야함
+#  - 추가적인 요구사항
+#  - 단일 잡의 복잡성 증가
+
+# => 해결방향
+# [복잡성 줄이는 방법]
+# 1) 키워드 관리
+# - 깃헙액션 워크 플로우에서 관리 x
+# - 외부에서 관리 o  ex) keyword-list.txt => 깃헙액션 워크플로우 로직 유지(코드 수정 x)
+
+# 2) slack step 사용 구조
+# - 키워드가 5개 > slack step 5개
+# -- if keywork == ''
+#    slack: critical-issue 
+# -- 동일한 수정 사항 반영 위해 5개 step 업데이트
+
+# => 문제점
+# - 관리하기 어려움
+
+# => 키워드 개수와 상관없이 slack step 1개 사용
+# - 깃헙액션 워크플로우 로직 유지(코드수정x)
+
+
+# 3) 동일한 슬랙 웹훅 이름 사용
+# - 슬랙 웹훅 URL = 특정 채널
+# -- critical-issue의 슬랙 웹훅 URL : ${{ secrets.critical-issue }}
+# -- normal-issue의 슬랙 웹훅 URL : ${{ secrets.normal-issue }}
+# 만약 high-issue 가 추가될 때 아래 코드 추가 필요
+# -- high-issue의 슬랙 웹훅 URL : ${{ secrets.high-issue }}
+
+# => 개선
+# - critical, normal, high, etc: ${{ secrets.SLACK_WEBHOOK }} 
+# - 'enviroment' 활용
+# - enviroment: critical - ${{ secrets.SLACK_WEBHOOK }}
+# - enviroment: normal - ${{ secrets.SLACK_WEBHOOK }}
+
+# 2-2. jobs(2개 사용)
+# 1) 첫 번째 job: get-keywork
+# - keyword-list.txt 사용
+# - 이슈 제목이 키워드 리스트에 있다면 그 값을 아웃풋으로 구성
+
+# 2) 두 번째 job: slack
+# - get-keyword의 아웃풋을 받아서 environment로 사용
+# ex) enviroment: critical
+# - 슬랙으로 메세지 전송
+
+# 3. 키워드는 변동사항 생길 수 있음(추가, 삭제 등)
+# 3-1. 키워드가 추가될 때
+# - 깃헙액션 로직 수정 x
+# - keyword-list에 키워드 추가
+# - environment 생성 + 슬랙 웹훅 설정
+
+# 3-2. 키워드가 삭제될 때
+# - 깃헙액션 로직 수정 x
+# - keyword-list에 키워드 제거
+# - environment 제거
+
+# 작업과정 -----------------------------
+# 1. 슬랙 새채널 생성
+# - critical-issue, normal-issue
+# 2. slack webhook 홈페이지에서 your app 에 생성된 워크스페이스 선택
+# 3. Incoming Webhooks 메뉴로 이동 > normal, critical 채널에 대한 웹훅 URL 생성
+
+
+name: issue
+on:
+  issues:
+    types: [opened]
+
+jobs:
+  get-keyword:
+    runs-on: ubuntu-latest
+    outputs:
+      level: ${{ steps.get-keyword.outputs.level }}
+    steps:
+    - name: checkout
+      uses: actions/checkout@v4
+    - name: get-keyword
+      id: get-keyword
+      run: |
+        echo level=Undefined >> $GITHUB_OUTPUT
+
+        keywords=$(cat keyword-list.txt)
+        for keyword in $keywords; do
+          if [[ "${{ github.event.issue.title }}" =~ "$keyword" ]]; then
+            echo level=$keyword >> $GITHUB_OUTPUT
+          fi
+        done
+    - name: get outputs
+      run: |
+        echo ${{ steps.get-keyword.outputs.level }}
+
+    
