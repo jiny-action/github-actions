@@ -114,7 +114,11 @@ jobs:
     needs: [get-keyword]
     if: needs.get-keyword.outputs.level != 'Undefined'
     runs-on: ubuntu-latest
-    environment: ${{ needs.get-keyword.outputs.level }}
+    # environment: ${{ needs.get-keyword.outputs.level }}
+    # github에서 어떤 환경을 사용했는지를 시각적으로 구성
+    strategy:
+      matrix:
+        environment: ["${{ needs.get-keyword.outputs.level }}"]
     steps:
     - name: slack
       uses: slackapi/slack-github-action@v1.24.0
@@ -138,3 +142,5 @@ jobs:
       env:
         SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK_URL }}
         SLACK_WEBHOOK_TYPE: INCOMING_WEBHOOK
+
+# ${{}}에서  $ {{}} 띄어지지않게 주의! - 값이 안들어감
